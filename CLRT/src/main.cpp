@@ -198,6 +198,8 @@ int main() {
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
 
+    uint32_t frameIndex = 1;
+
     // Loops until the Window is closed
     while (!glfwWindowShouldClose(window)) {
         _update_fps_counter(window);
@@ -216,6 +218,7 @@ int main() {
             glUniform3f(4, camera.forwardDir.x, camera.forwardDir.y, camera.forwardDir.z);
             glUniform3f(5, camera.up.x, camera.up.y, camera.up.z);
             glUniformMatrix4fv(6, 1, GL_FALSE, glm::value_ptr(rotationMatrix));
+            glUniform1f(7, deltaTime);
         }
 
         glMemoryBarrier(GL_ALL_BARRIER_BITS);
