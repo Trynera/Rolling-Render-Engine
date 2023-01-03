@@ -17,6 +17,7 @@ bool start_gl() {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3); // compute shaders added in 4.3
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
         window = glfwCreateWindow(WINDOW_W, WINDOW_H, "compute shaders tutorial", NULL, NULL);
         if (!window) {
             fprintf(stderr, "ERROR: could not open window with GLFW3\n");

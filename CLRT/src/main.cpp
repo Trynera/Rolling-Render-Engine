@@ -90,7 +90,7 @@ bool handleInput(GLFWwindow* window, double deltaTime, glm::vec3& cameraPosition
         movementDirection -= up;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL)) {
-        multiplier = 2.5f;
+        multiplier = 5.0f;
     }
 
     if (glm::length(movementDirection) > 0.0f) {
@@ -198,7 +198,7 @@ int main() {
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
 
-    uint32_t frameIndex = 1;
+    int accumulatedPasses = 0;
 
     // Loops until the Window is closed
     while (!glfwWindowShouldClose(window)) {
@@ -250,6 +250,11 @@ int main() {
         }
         else {
             rotationMatrix = glm::rotate(glm::rotate(glm::mat4(1), camera.cameraPitch, glm::vec3(1.0f, 0.0f, 0.0f)), camera.cameraYaw, glm::vec3(0.0f, 1.0f, 0.0f));
+        }
+
+        if (refreshRequired) {
+            accumulatedPasses = 0;
+            refreshRequired = false;
         }
 
         // Swaps the Buffers for the Window we just created
