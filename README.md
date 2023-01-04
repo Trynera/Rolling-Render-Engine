@@ -7,4 +7,9 @@ I will probably rewrite this in Vulkan once I'm finished with fixing a bunch of 
 Btw don't get jump scared cuz there is a bug where when you turn around you can see a copy of the objects from behind (it's not a copy because that
 are the objects from behind somehow)
 
+I am planning to write an entirely new renderer once I'm done with this project.
+This was just to learn to get Ray Tracing working on the GPU using Compute Shaders and I'm planning to get into Vulkan for the rewritten Engine.
+
+For now I'm just gonna add a few more Features like Accumulation.
+
 k bye
