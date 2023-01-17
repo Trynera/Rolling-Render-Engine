@@ -16,12 +16,15 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <vector>
+#include <time.h>
 
 Camera camera;
 glm::mat4 projection;
 
 bool mouseAbsorbed = false;
-bool refreshRequired = false;
+GLint refreshRequired = 0;
+GLint accumulatedPasses = 0;
 
 glm::mat4 rotationMatrix(1);
 
@@ -196,9 +199,13 @@ int main() {
     glm::mat4 view = glm::lookAt(camera.position, camera.lookAt, camera.up);
     
     float deltaTime = 0.0f;
+    float firstTime = 0.0f;
+    float refreshTime = 0.0f;
     float lastFrame = 0.0f;
-
-    int accumulatedPasses = 0;
+    float firstFrame = 0.0f;
+    float refreshFrame = 0.0f;
+    float w = 0.0f;
+    bool firstFramePassed = false;
 
     // Loops until the Window is closed
     while (!glfwWindowShouldClose(window)) {
@@ -219,11 +226,13 @@ int main() {
             glUniform3f(5, camera.up.x, camera.up.y, camera.up.z);
             glUniformMatrix4fv(6, 1, GL_FALSE, glm::value_ptr(rotationMatrix));
             glUniform1f(7, deltaTime);
+            glUniform1f(8, firstTime);
+            glUniform1f(9, w);
         }
 
         glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
-        // This is responsible for drawing the Texture we rendered with the Compute Shader
+        // This is responsible for drawing the Texture we rendered with the Compute 
         glClear(GL_COLOR_BUFFER_BIT);
         glUseProgram(quad_program);
         glBindVertexArray(quad_vao);
@@ -238,23 +247,39 @@ int main() {
         if (GLFW_PRESS == glfwGetKey(window, GLFW_KEY_ESCAPE)) { glfwSetWindowShouldClose(window, 1); }
 
         float currentFrame = glfwGetTime();
+
+        // Sets Time elapsed between each Frame
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
+        // Sets Time elapsed since the first frame
+        firstTime = currentFrame - firstFrame;
+        if (!firstFramePassed) {
+            firstFrame = currentFrame;
+            firstFramePassed = true;
+            refreshFrame = firstFrame;
+        }
+
+        // Sets Time elapsed since the last refreshed frame
+        refreshTime = currentFrame - refreshFrame;
 
         glfwSetMouseButtonCallback(window, keyCallback);
 
         if (mouseAbsorbed) {
             if (handleInput(window, deltaTime, camera.position, camera.cameraYaw, camera.cameraPitch, &rotationMatrix)) {
-                refreshRequired = true;
+                refreshRequired = 1;
             }
         }
         else {
             rotationMatrix = glm::rotate(glm::rotate(glm::mat4(1), camera.cameraPitch, glm::vec3(1.0f, 0.0f, 0.0f)), camera.cameraYaw, glm::vec3(0.0f, 1.0f, 0.0f));
         }
 
-        if (refreshRequired) {
-            accumulatedPasses = 0;
-            refreshRequired = false;
+        if (!refreshRequired) {
+            w = 1.0f / (firstTime - refreshTime + 1.0f);
+        }
+        else {
+            refreshRequired = 0;
+            refreshFrame = currentFrame;
         }
 
         // Swaps the Buffers for the Window we just created

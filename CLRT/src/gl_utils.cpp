@@ -112,9 +112,9 @@ const char* frag_shader_str =
 in vec2 st;\n                                                                 \
 uniform sampler2D img;\n                                                      \
 out vec4 fc;\n                                                                \
-\n                                                                            \
-void main () {\n                                                              \
-  fc = texture (img, st);\n                                                 \
+                                                                              \
+void main() {\n                                                               \
+  fc = texture(img, st);\n                                                    \
 }\n";
 
 GLuint create_quad_program() {

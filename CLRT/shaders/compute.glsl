@@ -1,6 +1,7 @@
 #version 460 core
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(rgba32f, binding = 0) uniform image2D screen;
+uniform int accumulatedPasses;
 
 #define MAX_NUMBER_OF_OBJECTS 128
 #define MAX_LIGHT_COUNT 4
@@ -65,8 +66,7 @@ layout(location = 4) uniform vec3 cam_fdir;
 layout(location = 5) uniform vec3 cam_up;
 layout(location = 6) uniform mat4 rotationMatrix;
 layout(location = 7) uniform float deltaTime;
-
-uint frameIndex = 1;
+layout(location = 8) uniform float firstTime;
 
 Scene currentScene;
 Sphere firstSphere = { vec3(0.0, 0.0, -1.0), 1.0, 0 };
@@ -77,27 +77,34 @@ Material secondMaterial = { vec3(0.2, 0.3, 1.0), 0.04, 0.0 };
 
 uint wang_hash(inout uint seed)
 {
-    seed = uint(seed ^ uint(61)) ^ uint(seed >> uint(16));
-    seed *= uint(9);
-    seed = seed ^ (seed >> 4);
-    seed *= uint(0x27d4eb2d);
-    seed = seed ^ (seed >> 15);
-    return seed;
+  seed = uint(seed ^ uint(61)) ^ uint(seed >> uint(16));
+  seed *= uint(9);
+  seed = seed ^ (seed >> 4);
+  seed *= uint(0x27d4eb2d);
+  seed = seed ^ (seed >> 15);
+  return seed;
 }
 
 float RandomFloat01(inout uint state)
 {
-    return float(wang_hash(state)) / 4294967296.0;
+  return float(wang_hash(state)) / 4294967296.0;
 }
 
 vec3 RandomUnitVector(inout uint state)
 {
-    float z = RandomFloat01(state) * 2.0 - 1.0;
-    float a = RandomFloat01(state) * TWOPI;
-    float r = sqrt(1.0 - z * z);
-    float nX = r * cos(a);
-    float nY = r * sin(a);
-    return vec3(nX, nY, z);
+  float z = (RandomFloat01(state) * 2.0 - 1.0);
+  float a = (RandomFloat01(state) * TWOPI);
+  float r = (1.0 - z * z);
+  float nX = r * cos(a);
+  float nY = r * sin(a);
+  return vec3(nX, nY, z);
+}
+
+const float PHI = 1.61803398874989484820459; // Φ = Golden Ratio 
+
+float gold_noise(in vec2 xy, in float seed)
+{
+  return fract(tan(distance(xy*PHI, xy)*seed)*xy.x);
 }
 
 HitPayload Miss(const Ray ray) {
@@ -177,7 +184,7 @@ vec4 PerPixel(float x, float y, uint rngState) {
 		multiplier *= 0.5;
 
 		ray.origin = payload.WorldPosition + payload.WorldNormal * 0.0001;
-		ray.direction = reflect(ray.direction,
+    ray.direction = reflect(ray.direction,
 			payload.WorldNormal + material.Roughness * RandomUnitVector(rngState));
 	}
 
@@ -185,34 +192,30 @@ vec4 PerPixel(float x, float y, uint rngState) {
 }
 
 void main() {
-    vec4 pixel = vec4(0.0);
-    ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
+  vec4 pixel = vec4(0.0);
+  ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
 
-    ivec2 dims = imageSize(screen);
-    float x = (float(pixel_coords.x * 2 - dims.x) / dims.x);
-    float y = (float(pixel_coords.y * 2 - dims.y) / dims.x);
+  ivec2 dims = imageSize(screen);
+  float x = (float(pixel_coords.x * 2 - dims.x) / dims.x);
+  float y = (float(pixel_coords.y * 2 - dims.y) / dims.x);
 
-    float fov = 90.0;
+  float fov = 90.0;
 
-    uint rngState = uint(uint(pixel_coords.x) * uint(1973) + uint(pixel_coords.y) * uint(9277) + uint(pixel) * uint(26699)) | uint(1);
+  // Defines the required Variables to shoot the Rays into random Directions (I made this extra thing to make it more "Random" than it was before)
+  // If I didn't add the last 2 things, I would have had the same values everytime!
+  uint rngState = uint(uint(pixel_coords.x) * uint(1973) + uint(pixel_coords.y) * uint(9277) + uint(pixel) * uint(26699)) | uint(1);
+  float fRngState = rngState;
+  fRngState += firstTime * fRngState;
 
-    currentScene.spheres[0] = firstSphere;
-    currentScene.spheres[1] = secondSphere;
+  currentScene.spheres[0] = firstSphere;
+  currentScene.spheres[1] = secondSphere;
 
-    currentScene.materials[0] = firstMaterial;
-    currentScene.materials[1] = secondMaterial;
+  currentScene.materials[0] = firstMaterial;
+  currentScene.materials[1] = secondMaterial;
 
-    vec4 color = PerPixel(x, y, rngState);
+  vec4 color = PerPixel(x, y, uint(fRngState));
 
-    vec4 accumlationData[1280 * 720];
+  pixel = color;
 
-    accumlationData[int(x) + int(y) * 1280] += color;
-
-    vec4 accumlatedColor = accumlationData[int(x) + int(y) * 1280];
-    accumlatedColor /= 1.0;
-
-    accumlatedColor = clamp(accumlatedColor, vec4(0.0), vec4(1.0));
-
-    pixel = accumlatedColor;
-    imageStore(screen, pixel_coords, pixel);
+  imageStore(screen, pixel_coords, pixel);
 }
