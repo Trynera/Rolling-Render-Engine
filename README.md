@@ -11,10 +11,9 @@ I am planning to write an entirely new renderer once I'm done with this project.
 This was just to learn to get Ray Tracing working on the GPU using Compute Shaders and I'm planning to get into Vulkan for the rewritten Engine.
 
 For now I'm just gonna add a few more Features like:
-* Accumulation
-* HDR Support
-* Direct Illumination
-* Global Illumination
-* More Material properties
+[ ] HDR Support
+[ ] Direct Illumination
+[ ] Global Illumination
+[ ] More Material properties
 
 k bye
