@@ -12,8 +12,9 @@ This was just to learn to get Ray Tracing working on the GPU using Compute Shade
 
 For now I'm just gonna add a few more Features like:
 - [ ] HDR Support
-- [ ] Direct Illumination
 - [ ] Global Illumination
 - [ ] More Material properties
+- [ ] ReSTIR
+- [ ] Predetermined Indirect Illumination
 
 k bye
