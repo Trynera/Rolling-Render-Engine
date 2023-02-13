@@ -9,8 +9,10 @@ uniform int accumulatedPasses;
 #define FLOAT_MIN -3.4028235e+38
 #define UINT_MAX 4.29497e+09
 #define EPSILON 0.0001
-#define PI 3.14159265
-#define TWOPI 2.0*PI
+#define PI 3.1415926535897932385
+#define TWOPI 2.0 * PI
+#define INFINITY 1. / 0.
+#define BOUNCES 5
 
 // Albedo is Color guys
 struct Material {
@@ -39,12 +41,18 @@ struct Ray {
 };
 
 struct HitPayload {
-  float HitDistance;
-  vec3 WorldPosition;
+  vec3 HitPoint;
   vec3 WorldNormal;
-
-  int ObjectIndex;
+  float HitDistance;
+  bool FrontFace;
 };
+
+HitPayload gRec;
+
+void SetFaceNormal(const Ray ray, const vec3 outwardNormal) {
+  gRec.FrontFace = dot(ray.direction, outwardNormal) < 0;
+  gRec.WorldNormal = gRec.FrontFace ? outwardNormal : -outwardNormal;
+}
 
 struct Sphere {
   vec3 Position;
@@ -53,10 +61,8 @@ struct Sphere {
   int MaterialIndex;
 };
 
-struct Scene {
+struct HittableList {
   Sphere spheres[MAX_NUMBER_OF_OBJECTS];
-  Material materials[MAX_NUMBER_OF_OBJECTS];
-  DirectLight lightSources[MAX_LIGHT_COUNT];
 };
 
 layout(location = 1) uniform vec3 cam_origin;
@@ -68,14 +74,17 @@ layout(location = 6) uniform mat4 rotationMatrix;
 layout(location = 7) uniform float deltaTime;
 layout(location = 8) uniform float firstTime;
 
-Scene currentScene;
+int objectCount;
+
 Sphere firstSphere = { vec3(0.0, 0.0, -1.0), 1.0, 0 };
 Sphere secondSphere = { vec3(0.0, -101.0, -1.0), 100.0, 1 };
 
 Material firstMaterial = { vec3(1.0, 0.0, 1.0), 0.0, 0.0 };
-Material secondMaterial = { vec3(0.2, 0.3, 1.0), 0.04, 0.0 };
+Material secondMaterial = { vec3(0.2, 0.3, 1.0), 1, 0.0 };
 
-uint wang_hash(inout uint seed)
+DirectLight firstLight = { vec3(-1.0, 1.0, 1.0), 1.0, vec3(0, 0, 0), 1.0, 100.0 };
+
+uint wang_hash(uint seed)
 {
   seed = uint(seed ^ uint(61)) ^ uint(seed >> uint(16));
   seed *= uint(9);
@@ -85,12 +94,12 @@ uint wang_hash(inout uint seed)
   return seed;
 }
 
-float RandomFloat01(inout uint state)
+float RandomFloat01(uint state)
 {
   return float(wang_hash(state)) / 4294967296.0;
 }
 
-vec3 RandomUnitVector(inout uint state)
+vec3 RandomUnitVector(uint state)
 {
   float z = (RandomFloat01(state) * 2.0 - 1.0);
   float a = (RandomFloat01(state) * TWOPI);
@@ -100,95 +109,63 @@ vec3 RandomUnitVector(inout uint state)
   return vec3(nX, nY, z);
 }
 
-const float PHI = 1.61803398874989484820459; // Φ = Golden Ratio 
+// Converts the RGB Value from 255 to a value between 0 and 1, or the other way around
+vec3 EightBitIntToPercentColor(vec3 rgbColor, bool convertTo) {
+  if (convertTo) return vec3(rgbColor.x / 255, rgbColor.y / 255, rgbColor.z / 255);
 
-float gold_noise(in vec2 xy, in float seed)
-{
-  return fract(tan(distance(xy*PHI, xy)*seed)*xy.x);
+  return vec3(rgbColor.x * 255, rgbColor.y * 255, rgbColor.z * 255);
 }
 
-HitPayload Miss(const Ray ray) {
-  HitPayload payload;
-  payload.HitDistance = -1.0;
-  return payload;
+vec3 at(float t, const Ray ray) { return ray.origin + t * ray.direction; }
+
+bool SphereHit(const Ray ray, float t_min, float t_max, HitPayload rec, const Sphere sphere) {
+  vec3 oc = ray.origin - sphere.Position;
+  float a = dot(length(ray.direction), length(ray.direction));
+  float half_b = dot(oc, ray.direction);
+  float c = dot(length(oc), length(oc)) - sphere.Radius * sphere.Radius;
+
+  float discriminant = half_b * half_b - a * c;
+  if (discriminant < 0) return false;
+  float sqrtd = sqrt(discriminant);
+
+  float root = (-half_b - sqrtd) / a;
+  if (root < t_min || t_max < root) {
+    root = (-half_b + sqrtd) / a;
+    if (root < t_min || t_max < root)
+      return false;
+  }
+
+  gRec.HitDistance = root;
+  gRec.HitPoint = at(gRec.HitDistance, ray);
+  vec3 outwardNormal = (gRec.HitPoint - sphere.Position) / sphere.Radius;
+  SetFaceNormal(ray, outwardNormal);
+
+  return true;
 }
 
-HitPayload ClosestHit(const Ray ray, float hitDistance, int objectIndex) {
-  HitPayload payload;
-  payload.HitDistance = hitDistance;
-  payload.ObjectIndex = objectIndex;
+bool ListHit(const Ray ray, float t_min, float t_max, HitPayload rec, HittableList hitList) {
+  HitPayload tempRec;
+  bool hitAnything = false;
+  float closestSoFar = t_max;
 
-  const Sphere closestSphere = currentScene.spheres[objectIndex];
-
-  vec3 origin = ray.origin - closestSphere.Position;
-  payload.WorldPosition = origin + ray.direction * hitDistance;
-  payload.WorldNormal = normalize(payload.WorldPosition);
-
-  payload.WorldPosition += closestSphere.Position;
-
-  return payload;
-}
-
-HitPayload TraceRay(const Ray ray) {
-  int closestSphere = -1;
-  float hitDistance = FLOAT_MAX;
-
-  for (int i = 0; i <= currentScene.spheres.length(); i++) {
-    const Sphere sphere = currentScene.spheres[i];
-    vec3 origin = ray.origin - sphere.Position;
-
-    float a = dot(ray.direction, ray.direction);
-    float b = 2.0 * dot(origin, ray.direction);
-    float c = dot(origin, origin) - sphere.Radius * sphere.Radius;
-    
-    float discriminant = b * b - 4.0 * a * c;
-
-    if (discriminant < 0.0) continue;
-
-    float closestT = (-b - sqrt(discriminant)) / (2.0 * a);
-    if (closestT > 0.0 && closestT < hitDistance) {
-      hitDistance = closestT;
-      closestSphere = i;
+  for (int i = 0; i < objectCount; i++) {
+    if (SphereHit(ray, t_min, closestSoFar, tempRec, hitList.spheres[i])) {
+      hitAnything = true;
+      closestSoFar = gRec.HitDistance;
+      gRec = tempRec;
     }
   }
 
-  if (closestSphere < 0) return Miss(ray);
-
-  return ClosestHit(ray, hitDistance, closestSphere);
+  return hitAnything;
 }
 
-vec4 PerPixel(float x, float y, uint rngState) {
-  Ray ray = { cam_origin, (normalize(vec4(vec2(x, y), -1.0, 0.0)) * rotationMatrix).xyz };
+vec3 RayColor(float rngState, Ray ray, const HittableList world, int depth) {
+  HitPayload rec;
+  if (ListHit(ray, 0, INFINITY, rec, world))
+    return 0.5 * (gRec.WorldNormal + vec3(1));
 
-	vec3 color = vec3(0.0);
-	float multiplier = 1.0;
-
-	int bounces = 5;
-	for (int i = 0; i < bounces; i++) {
-		HitPayload payload = TraceRay(ray);
-		if (payload.HitDistance < 0.0) {
-			vec3 skyColor = vec3(0.6, 0.7, 0.9);
-			color += skyColor * multiplier;
-			break;
-		}
-
-		vec3 lightDir = normalize(vec3(-1.0, -1.0, -1.0));
-		float lightIntensity = max(dot(payload.WorldNormal, -lightDir), 0.0);
-
-		const Sphere sphere = currentScene.spheres[payload.ObjectIndex];
-		const Material material = currentScene.materials[sphere.MaterialIndex];
-		vec3 sphereColor = material.Albedo;
-		sphereColor *= lightIntensity;
-		color += sphereColor * multiplier;
-
-		multiplier *= 0.5;
-
-		ray.origin = payload.WorldPosition + payload.WorldNormal * 0.0001;
-    ray.direction = reflect(ray.direction,
-			payload.WorldNormal + material.Roughness * RandomUnitVector(rngState));
-	}
-
-	return vec4(color, 1.0);
+  float t = 0.5 * (ray.direction.y + 1.0);
+  return (1.0 - t) * vec3(1) + t * vec3(0.5, 0.7, 1.0);
 }
 
 void main() {
@@ -198,8 +175,20 @@ void main() {
   ivec2 dims = imageSize(screen);
   float x = (float(pixel_coords.x * 2 - dims.x) / dims.x);
   float y = (float(pixel_coords.y * 2 - dims.y) / dims.x);
+  
+  // This is for Antialiasing!!!
+  const int samples_per_pixel = 50;
+
+  HittableList world;
+  world.spheres[0] = firstSphere;
+  world.spheres[1] = secondSphere;
 
   float fov = 90.0;
+  int max_depth = 50;
+
+  for (int i = 0; i < world.spheres.length(); i++)
+    if (dot(world.spheres[i].Position, world.spheres[i].Position) + world.spheres[i].Radius > 0.0)
+      objectCount = i+1;
 
   // Defines the required Variables to shoot the Rays into random Directions (I made this extra thing to make it more "Random" than it was before)
   // If I didn't add the last 2 things, I would have had the same values everytime!
@@ -207,15 +196,15 @@ void main() {
   float fRngState = rngState;
   fRngState += firstTime * fRngState;
 
-  currentScene.spheres[0] = firstSphere;
-  currentScene.spheres[1] = secondSphere;
+  Ray ray = { cam_origin, (normalize(vec4(vec2(x, y), -1.0, 0.0)) * rotationMatrix).xyz };
 
-  currentScene.materials[0] = firstMaterial;
-  currentScene.materials[1] = secondMaterial;
+  world.spheres[0] = firstSphere;
+  world.spheres[1] = secondSphere;
 
-  vec4 color = PerPixel(x, y, uint(fRngState));
+  vec3 rayColor = vec3(0);
+  rayColor += RayColor(uint(fRngState), ray, world, max_depth);
 
-  pixel = color;
+  pixel = vec4(rayColor, 1.0);
 
   imageStore(screen, pixel_coords, pixel);
 }

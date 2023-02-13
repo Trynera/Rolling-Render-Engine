@@ -7,6 +7,7 @@
 
 GLFWwindow* window;
 
+// It inits OpenGL with a window using GLFW.
 bool start_gl() {
     { // glfw
         if (!glfwInit()) {
@@ -18,6 +19,7 @@ bool start_gl() {
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+        glEnable(GL_MULTISAMPLE);
         window = glfwCreateWindow(WINDOW_W, WINDOW_H, "compute shaders tutorial", NULL, NULL);
         if (!window) {
             fprintf(stderr, "ERROR: could not open window with GLFW3\n");
@@ -55,6 +57,7 @@ void print_program_info_log(GLuint program) {
     fprintf(stderr, "program info log for GL index %u\n%s\n", program, plog);
 }
 
+// cmon I don't need to comment it's use
 bool check_shader_errors(GLuint shader) {
     GLint params = -1;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &params);
@@ -66,6 +69,7 @@ bool check_shader_errors(GLuint shader) {
     return true;
 }
 
+// cmon I don't need to comment it's use either
 bool check_program_errors(GLuint program) {
     GLint params = -1;
     glGetProgramiv(program, GL_LINK_STATUS, &params);
@@ -77,6 +81,7 @@ bool check_program_errors(GLuint program) {
     return true;
 }
 
+// It creates the Vertex Buffer, pretty obvious lmfao
 GLuint create_quad_vao() {
     GLuint vao = 0, vbo = 0;
     float verts[] = { -1.0f, -1.0f, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f };

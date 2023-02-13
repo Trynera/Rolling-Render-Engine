@@ -23,7 +23,7 @@ Camera camera;
 glm::mat4 projection;
 
 bool mouseAbsorbed = false;
-GLint refreshRequired = 0;
+GLint refreshRequired = 1;
 GLint accumulatedPasses = 0;
 
 glm::mat4 rotationMatrix(1);
@@ -162,7 +162,7 @@ int main() {
     // texture handle and dimensions
     GLuint tex_output = 0;
     int tex_w = 1280, tex_h = 720;
-    { // create the texture
+    { // Creates the texture
         glGenTextures(1, &tex_output);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, tex_output);
@@ -174,7 +174,7 @@ int main() {
         // same internal format as compute shader input
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, tex_w, tex_h, 0, GL_RGBA, GL_FLOAT, NULL);
         // bind to image unit so can write to specific pixels from the shader
-        glBindImageTexture(0, tex_output, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+        glBindImageTexture(0, tex_output, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
     }
 
     { // query up the workgroups
@@ -228,11 +228,12 @@ int main() {
             glUniform1f(7, deltaTime);
             glUniform1f(8, firstTime);
             glUniform1f(9, w);
+            glUniform1i(10, refreshRequired);
         }
 
         glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
-        // This is responsible for drawing the Texture we rendered with the Compute 
+        // This is responsible for drawing the Texture we rendered with the Compute Shader
         glClear(GL_COLOR_BUFFER_BIT);
         glUseProgram(quad_program);
         glBindVertexArray(quad_vao);
