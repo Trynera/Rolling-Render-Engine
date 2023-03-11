@@ -13,9 +13,12 @@ This was just to learn to get Ray Tracing working on the GPU using Compute Shade
 - [+] Global Illumination
 - [+] More Material properties
 
+This probably has alot of useless or messy stuff cuz this is just a POC! I'm not gonna fix any of this but continue to the next Project!
+
 I'm gonna work on a Vulkan rewrite, with alot more features (which is suppost to be used in a demo)
 Keep in mind, that this Ray Tracer is not suppost to be a replacement for anything!
 It's just a fun project I started, because I wanted to see how far I could push my Hardware to the Limit,
-without having to rely on RT Cores (cuz my GPU doesn't have RT Cores)
+without having to rely on RT Cores (cuz my GPU doesn't have RT Cores). I already have an Idea in mind,
+which would allow me to get a less noisy image (not just ReSTIR but a Technique I thought of myself!)
 
 k bye
