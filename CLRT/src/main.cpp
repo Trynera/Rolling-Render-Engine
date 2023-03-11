@@ -86,16 +86,16 @@ bool handleInput(GLFWwindow* window, double deltaTime, glm::vec3& cameraPosition
     if (glfwGetKey(window, GLFW_KEY_A)) {
         movementDirection -= right;
     }
-    if (glfwGetKey(window, GLFW_KEY_SPACE)) {
+    if (glfwGetKey(window, GLFW_KEY_SPACE)) { 
         movementDirection += up;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
         movementDirection -= up;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL)) {
-        multiplier = 5.0f;
+        multiplier = 1000.0f; 
     }
-
+     
     if (glm::length(movementDirection) > 0.0f) {
         cameraPosition += glm::normalize(movementDirection) * (float)deltaTime * (float)multiplier;
         moved = true;
@@ -124,7 +124,7 @@ void _update_fps_counter(GLFWwindow* window) {
 int main() {
     (start_gl()); // just starts a 4.3 GL context+window
 
-    projection = glm::perspective(90.0f, 1280.0f / 720.0f, 0.1f, 100.0f);
+    projection = glm::perspective(40.0f, 1280.0f / 720.0f, 0.1f, 100.0f);
 
     std::string computeCode;
     std::ifstream cShaderFile;
@@ -194,7 +194,7 @@ int main() {
         printf("max computer shader invocations %i\n", work_grp_inv);
     }
 
-    Camera camera = { glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, -1.0f), 0.0f, 0.0f };
+    Camera camera = { glm::vec3(278.0f, 278.0f, -800.0f), glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(278.0f, 278.0f, -278.0f), 0.0f, 0.0f };
 
     glm::mat4 view = glm::lookAt(camera.position, camera.lookAt, camera.up);
     

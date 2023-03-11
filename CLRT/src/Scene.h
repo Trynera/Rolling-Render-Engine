@@ -6,8 +6,9 @@
 
 struct Material {
 	glm::vec3 Albedo{ 1.0f };
-	float Roughness = 1.0f;
-	float Metallic = 0.0f;
+	float Fuzz = 0.0f;
+	float IR = 0.0f;
+	int Type = 0;
 };
 
 struct Sphere {
@@ -15,9 +16,4 @@ struct Sphere {
 	float Radius = 0.5f;
 
 	int MaterialIndex = 0;
-};
-
-struct Scene {
-	std::vector<Sphere> Spheres;
-	std::vector<Material> Materials;
 };
