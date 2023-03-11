@@ -10,11 +10,12 @@ are the objects from behind somehow)
 I am planning to write an entirely new renderer once I'm done with this project.
 This was just to learn to get Ray Tracing working on the GPU using Compute Shaders and I'm planning to get into Vulkan for the rewritten Engine.
 
-For now I'm just gonna add a few more Features like:
-- [ ] HDR Support
-- [ ] Global Illumination
-- [ ] More Material properties
-- [ ] ReSTIR
-- [ ] Predetermined Indirect Illumination
+- [+] Global Illumination
+- [+] More Material properties
+
+I'm gonna work on a Vulkan rewrite, with alot more features (which is suppost to be used in a demo)
+Keep in mind, that this Ray Tracer is not suppost to be a replacement for anything!
+It's just a fun project I started, because I wanted to see how far I could push my Hardware to the Limit,
+without having to rely on RT Cores (cuz my GPU doesn't have RT Cores)
 
 k bye
